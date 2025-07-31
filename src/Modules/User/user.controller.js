@@ -3,7 +3,7 @@ import * as userServices from "./user.service.js"
 
 const router = Router();
 
-router.get("/getSingleUser/:id",userServices.getSingleUser)
+router.get("/getSingleUser",userServices.getSingleUser)
 
 
 export default router;
