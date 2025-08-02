@@ -63,7 +63,16 @@ const userSchema = new mongoose.Schema(
       enum: Object.values(userRoles),
       default: userRoles.user,
     },
+    otps:{
+      confirmation:String,
+      resetPassword:String 
+    },
+    isConfirmed:{
+      type:Boolean,
+      default:false,
+    }
   },
+  
   {
     timestamps: true,
   }

@@ -5,6 +5,9 @@ import { successResponse } from "../../Utils/successResponse.utils.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { signToken } from "../../Utils/token.utils.js";
+import { emitter, sendEmail } from "../../Utils/sendEmail.utils.js";
+import { customAlphabet, nanoid } from "nanoid";
+const uniqueId = customAlphabet("1234567890abcdef", 4);
 
 // =============  signUp ==================================//
 export const signUp = async (req, res, next) => {
@@ -23,6 +26,9 @@ export const signUp = async (req, res, next) => {
 
   //encryption
   const encryptPhone = encrypt(phone);
+  // creating user
+
+  const otp = uniqueId();
 
   const user = await userModel.create({
     firstName,
@@ -32,6 +38,24 @@ export const signUp = async (req, res, next) => {
     age,
     gender,
     phone: encryptPhone,
+    otps: { confirmation: await hashPassword({ plainText: otp }) },
+  });
+
+  //   //sending Email
+  //   await sendEmail({
+  //     to: email,
+  //     subject: "Confirmation Email",
+  //     content: `
+  // <h1> Confirm your email , your otp ${otp}</h1>
+  // `,
+  //   });
+
+  emitter.emit("sendEmail", {
+    to: email,
+    subject: "Confirmation Email",
+    content: `
+<h1> Confirm your email , your otp ${otp}</h1>
+`,
   });
 
   return successResponse({
@@ -41,6 +65,37 @@ export const signUp = async (req, res, next) => {
     data: user,
   });
   // return res.status(201).json({ message: "user is created successfully" ,user});
+};
+
+// =============  Confirm Email ==================================//
+export const confirmEmail = async (req, res, next) => {
+  const { email, otp } = req.body;
+  const user = await userModel.findOne({ email, isConfirmed:false});
+  if (!user) {
+    return next(
+      new Error("user already found or already confirmed", { cause: 401 })
+    );
+  }
+
+  const isOtpMatched = await compare({
+    plainText: otp,
+    hash: user.otps?.confirmation,
+  });
+
+  if (!isOtpMatched) {
+    return next(new Error("Invalid OTP", { cause: 401 }));
+  }
+  user.isConfirmed = true;
+  user.otps.confirmation = null;
+
+  await user.save();
+
+  successResponse({
+    res,
+    statusCode: 201,
+    message: "User logged successfully",
+    data: user,
+  });
 };
 
 // =============  login ==================================//
